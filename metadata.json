@@ -1,0 +1,6 @@
+{
+  "name": "AI Accounting",
+  "description": "A Swiss Minimalist, India-focused AI Accounting SaaS platform for experienced accountants, CAs, and business owners.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

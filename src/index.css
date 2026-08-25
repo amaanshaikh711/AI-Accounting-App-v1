@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --color-surface-bg: #F9FAFB;
+    --color-surface-card: #FFFFFF;
+    --color-border: #E5E7EB;
+    --color-border-dark: #171717;
+    --color-text-primary: #171717;
+    --color-text-secondary: #525252;
+    --color-text-muted: #737373;
+    --color-accent: #171717;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #FAFAFA;
+    color: #171717;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+  }
+
+  input, select, textarea, button {
+    font-family: inherit;
+  }
+}
+
+.font-mono-nums {
+  font-family: 'JetBrains Mono', monospace;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Crisp Clean Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D4D4D8;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #A1A1AA;
+}
+
+/* Professional Polish table styles */
+.polish-table th,
+.swiss-table th {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: #737373;
+  border-bottom: 1px solid #E5E7EB;
+  padding: 0.75rem 1rem;
+  background-color: #FAFAFA;
+}
+
+.polish-table td,
+.swiss-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #F4F4F5;
+  font-size: 0.8125rem;
+}
+
+.polish-table tr:hover td,
+.swiss-table tr:hover td {
+  background-color: #FAFAFA;
+}
+
+
