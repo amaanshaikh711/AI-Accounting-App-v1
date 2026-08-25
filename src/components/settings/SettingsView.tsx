@@ -93,10 +93,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ navigate }) => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-mono bg-slate-100 text-slate-700 px-2.5 py-1 rounded-xs border border-slate-200">
+        <div className="flex items-center gap-2.5">
+          <span className="text-xs font-mono bg-neutral-100 text-neutral-700 px-2.5 py-1.5 rounded-xs border border-neutral-200">
             Tenant ID: {currentOrg?.id}
           </span>
+          <button
+            onClick={() => navigate('/new-business')}
+            id="settings-add-business-btn"
+            className="bg-neutral-900 hover:bg-neutral-800 text-white text-xs font-semibold px-3.5 py-1.5 rounded-xs transition-colors flex items-center gap-1.5 shadow-2xs"
+          >
+            <Plus size={13} />
+            <span>Add New Business</span>
+          </button>
         </div>
       </div>
 

@@ -38,6 +38,17 @@ import {
   SAMPLE_DOCUMENTS
 } from '../data/mockData';
 
+export interface CreateOrganizationParams extends Omit<Organization, 'id' | 'createdAt' | 'userRole'> {
+  bankName?: string;
+  accountType?: string;
+  accountNumber?: string;
+  ifsc?: string;
+  branch?: string;
+  openingBalance?: number;
+  industry?: string;
+  chartOfAccountsTemplate?: string;
+}
+
 interface AccountingContextType {
   // Auth & Tenant State
   currentUser: User | null;
@@ -49,7 +60,7 @@ interface AccountingContextType {
   signup: (name: string, email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   switchOrganization: (orgId: string) => void;
-  createOrganization: (orgData: Omit<Organization, 'id' | 'createdAt' | 'userRole'>) => Promise<Organization>;
+  createOrganization: (orgData: CreateOrganizationParams) => Promise<Organization>;
   updateOrganization: (orgId: string | Partial<Organization>, data?: Partial<Organization>) => void;
   inviteUser: (name: string, email: string, role: Role, orgId: string) => void;
 
@@ -349,13 +360,96 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const createOrganization = async (orgData: Omit<Organization, 'id' | 'createdAt' | 'userRole'>): Promise<Organization> => {
+  const createOrganization = async (orgData: CreateOrganizationParams): Promise<Organization> => {
+    const orgId = `org_${Date.now()}`;
     const newOrg: Organization = {
-      ...orgData,
-      id: `org_${Date.now()}`,
+      id: orgId,
+      name: orgData.name,
+      tradeName: orgData.tradeName,
+      businessType: orgData.businessType,
+      gstin: orgData.gstin,
+      pan: orgData.pan,
+      financialYear: orgData.financialYear || '2026–27',
+      address: orgData.address || '',
+      city: orgData.city || '',
+      state: orgData.state || '',
+      pincode: orgData.pincode || '',
+      email: orgData.email || '',
+      phone: orgData.phone || '',
       createdAt: new Date().toISOString(),
       userRole: 'Owner',
     };
+
+    // Auto-provision initial primary bank account and cash ledger for this new business tenant
+    const newBankAccounts: BankAccount[] = [];
+    if (orgData.bankName && orgData.accountNumber) {
+      newBankAccounts.push({
+        id: `bank_${Date.now()}_1`,
+        orgId: newOrg.id,
+        bankName: orgData.bankName,
+        accountNumber: orgData.accountNumber,
+        accountType: (orgData.accountType || 'Current Account') as any,
+        branch: orgData.branch || `${orgData.city || 'Main'} Branch`,
+        ifsc: orgData.ifsc || 'HDFC0000001',
+        currentBalance: orgData.openingBalance || 0,
+        bookBalance: orgData.openingBalance || 0,
+        lastSynced: new Date().toISOString(),
+        unreconciledCount: 0,
+      });
+    } else {
+      newBankAccounts.push({
+        id: `bank_${Date.now()}_1`,
+        orgId: newOrg.id,
+        bankName: 'HDFC Bank (Primary Operating)',
+        accountNumber: '502000' + Math.floor(10000000 + Math.random() * 90000000),
+        accountType: 'Current Account',
+        branch: `${orgData.city || 'Corporate'} Branch`,
+        ifsc: 'HDFC0000060',
+        currentBalance: orgData.openingBalance || 250000,
+        bookBalance: orgData.openingBalance || 250000,
+        lastSynced: new Date().toISOString(),
+        unreconciledCount: 0,
+      });
+    }
+
+    newBankAccounts.push({
+      id: `bank_${Date.now()}_cash`,
+      orgId: newOrg.id,
+      bankName: 'Cash on Hand (Petty Cash)',
+      accountNumber: 'CASH-LEDGER-01',
+      accountType: 'Cash Account' as any,
+      branch: 'Corporate Vault',
+      ifsc: 'N/A',
+      currentBalance: 15000,
+      bookBalance: 15000,
+      lastSynced: new Date().toISOString(),
+      unreconciledCount: 0,
+    });
+
+    setBankAccounts((prev) => [...prev, ...newBankAccounts]);
+
+    // Add initial Capital Introduction / Opening Balance voucher
+    const openingAmt = orgData.openingBalance || 250000;
+    if (openingAmt > 0) {
+      const openingTx: Transaction = {
+        id: `tx_${Date.now()}_open`,
+        orgId: newOrg.id,
+        date: '2026-04-01',
+        description: 'Opening Capital Introduction & Bank Balance Provision',
+        type: 'Receipt',
+        partyName: 'Promoters Equity / Share Capital',
+        partyType: 'Ledger',
+        amount: openingAmt,
+        taxableAmount: openingAmt,
+        gstAmount: 0,
+        gstRate: 0,
+        status: 'Reconciled',
+        account: newBankAccounts[0].bankName,
+        referenceNo: 'JV-OPEN-001',
+      };
+      setTransactions((prev) => [openingTx, ...prev]);
+    }
+
     setOrganizations((prev) => [...prev, newOrg]);
     setCurrentOrgId(newOrg.id);
     addAuditEntry('Created Organization Tenant', 'Settings', `Organization: ${newOrg.name} (${newOrg.businessType})`);
@@ -622,25 +716,43 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
-  // Financial Metrics Computation
-  const totalSalesAmount = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
-  const totalExpenseAmount = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  // Tenant Scoped Data Slices
+  const activeOrgId = currentOrg?.id || currentOrgId || 'org_acme';
+
+  const orgInvoices = invoices.filter((i) => (i.orgId || 'org_acme') === activeOrgId);
+  const orgPurchaseBills = purchaseBills.filter((b) => (b.orgId || 'org_acme') === activeOrgId);
+  const orgTransactions = transactions.filter((t) => (t.orgId || 'org_acme') === activeOrgId);
+  const orgExpenses = expenses.filter((e) => (e.orgId || 'org_acme') === activeOrgId);
+  const orgCustomers = customers.filter((c) => (c.orgId || 'org_acme') === activeOrgId);
+  const orgVendors = vendors.filter((v) => (v.orgId || 'org_acme') === activeOrgId);
+  const orgBankAccounts = bankAccounts.filter((b) => (b.orgId || 'org_acme') === activeOrgId);
+  const orgBankFeeds = bankFeeds.filter((f) => orgBankAccounts.some(ba => ba.id === f.bankAccountId));
+  const orgBankStatementLines = bankStatementLines.filter((s) => orgBankAccounts.some(ba => ba.id === s.bankAccountId));
+  const orgReviewItems = reviewItems.filter((r) => (r.orgId || 'org_acme') === activeOrgId);
+  const orgInsights = insights.filter((i) => (i.orgId || 'org_acme') === activeOrgId);
+  const orgAuditLogs = auditLogs.filter((a) => (a.orgId || 'org_acme') === activeOrgId);
+  const orgNotifications = notifications.filter((n) => (n.orgId || 'org_acme') === activeOrgId || !n.orgId);
+  const orgDocuments = documents.filter((d: any) => !d.orgId || d.orgId === activeOrgId);
+
+  // Financial Metrics Computation per Organization
+  const totalSalesAmount = orgInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
+  const totalExpenseAmount = orgExpenses.reduce((sum, exp) => sum + exp.amount, 0);
   
-  const revenue = totalSalesAmount > 0 ? 2482400 + (totalSalesAmount - 1044190) : 2482400;
-  const expensesTotal = totalExpenseAmount > 0 ? 842100 + (totalExpenseAmount - 721010) : 842100;
+  const revenue = totalSalesAmount;
+  const expensesTotal = totalExpenseAmount;
   const netProfit = revenue - expensesTotal;
   
-  const cashAndBank = bankAccounts.reduce((sum, b) => sum + (b.balance || b.currentBalance || 0), 0) || 1284500;
-  const receivables = customers.reduce((sum, c) => sum + c.outstandingBalance, 0) || 642000;
-  const payables = vendors.reduce((sum, v) => sum + (v.outstandingBalance || v.payablesBalance || 0), 0) || 318500;
+  const cashAndBank = orgBankAccounts.reduce((sum, b) => sum + (b.balance || b.currentBalance || 0), 0);
+  const receivables = orgCustomers.reduce((sum, c) => sum + c.outstandingBalance, 0);
+  const payables = orgVendors.reduce((sum, v) => sum + (v.outstandingBalance || v.payablesBalance || 0), 0);
 
   // GST Breakdown
-  const gstOutputLiability = invoices.reduce((sum, i) => sum + (i.cgst + i.sgst + i.igst), 0) || 120600;
-  const gstInputCredit = expenses.reduce((sum, e) => sum + e.gstAmount, 0) || 78420;
+  const gstOutputLiability = orgInvoices.reduce((sum, i) => sum + (i.cgst + i.sgst + i.igst), 0);
+  const gstInputCredit = orgExpenses.reduce((sum, e) => sum + e.gstAmount, 0) + orgPurchaseBills.filter(p => p.itcEligible).reduce((sum, p) => sum + (p.cgst + p.sgst + p.igst), 0);
   const gstNetPayable = Math.max(0, gstOutputLiability - gstInputCredit);
 
-  const overdueInvoicesCount = invoices.filter((i) => i.status === 'Overdue').length;
-  const pendingReviewCount = reviewItems.filter((r) => r.status === 'Pending').length;
+  const overdueInvoicesCount = orgInvoices.filter((i) => i.status === 'Overdue').length;
+  const pendingReviewCount = orgReviewItems.filter((r) => r.status === 'Pending').length;
 
   return (
     <AccountingContext.Provider
@@ -658,20 +770,20 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         updateOrganization,
         inviteUser,
 
-        invoices,
-        purchaseBills,
-        transactions,
-        expenses,
-        customers,
-        vendors,
-        bankAccounts,
-        bankFeeds,
-        bankStatementLines,
-        reviewItems,
-        insights,
-        auditLogs,
-        notifications,
-        documents,
+        invoices: orgInvoices,
+        purchaseBills: orgPurchaseBills,
+        transactions: orgTransactions,
+        expenses: orgExpenses,
+        customers: orgCustomers,
+        vendors: orgVendors,
+        bankAccounts: orgBankAccounts,
+        bankFeeds: orgBankFeeds,
+        bankStatementLines: orgBankStatementLines,
+        reviewItems: orgReviewItems,
+        insights: orgInsights.length > 0 ? orgInsights : insights,
+        auditLogs: orgAuditLogs,
+        notifications: orgNotifications,
+        documents: orgDocuments,
 
         addInvoice,
         updateInvoiceStatus,

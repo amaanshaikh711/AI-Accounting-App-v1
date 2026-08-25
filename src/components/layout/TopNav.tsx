@@ -168,13 +168,13 @@ export const TopNav: React.FC<TopNavProps> = ({
                 <button
                   onClick={() => {
                     setOrgDropdownOpen(false);
-                    navigate('/create-organization');
+                    navigate('/new-business');
                   }}
                   id="add-organization-btn"
                   className="w-full text-left px-3 py-2 text-neutral-700 hover:bg-neutral-50 flex items-center gap-2 font-medium"
                 >
                   <Plus size={14} className="text-neutral-600" />
-                  <span>+ Create New Business Tenant</span>
+                  <span>Add New Business Tenant</span>
                 </button>
               </div>
             </div>

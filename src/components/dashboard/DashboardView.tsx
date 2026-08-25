@@ -124,7 +124,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ navigate }) => {
             className="px-4 py-2 border border-neutral-900 bg-neutral-900 text-white text-xs font-bold uppercase tracking-widest transition-colors hover:bg-neutral-800 flex items-center gap-1.5"
           >
             <Plus size={14} />
-            <span>+ New Invoice</span>
+            <span>New Invoice</span>
           </button>
           <button
             onClick={() => navigate('/expenses')}

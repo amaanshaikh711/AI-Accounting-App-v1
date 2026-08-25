@@ -597,7 +597,7 @@ export const SalesView: React.FC<SalesViewProps> = ({ navigate }) => {
                     className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 rounded-xs font-medium text-slate-800 flex items-center gap-1.5"
                   >
                     <Plus size={13} />
-                    <span>+ Add Line Item</span>
+                    <span>Add Line Item</span>
                   </button>
                 </div>
               </div>

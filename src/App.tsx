@@ -55,8 +55,8 @@ const AppContent: React.FC = () => {
     return <LandingPage navigate={navigate} />;
   }
 
-  // If user is authenticated but has no active organization, show onboarding wizard
-  if (!currentOrg || currentRoute === '/onboarding') {
+  // If user is authenticated but has no active organization or explicitly creating new business, show onboarding wizard
+  if (!currentOrg || currentRoute === '/onboarding' || currentRoute === '/create-organization' || currentRoute === '/new-business') {
     return <CreateOrganizationPage navigate={navigate} />;
   }
 
