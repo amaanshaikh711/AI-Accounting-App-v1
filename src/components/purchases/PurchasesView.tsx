@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Plus,
   Search,
-  Sparkles,
+  ScanLine,
   FileCheck2,
   AlertCircle,
   Eye,
@@ -27,6 +27,7 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({ navigate }) => {
   const [selectedBill, setSelectedBill] = useState<PurchaseBill | null>(null);
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
   const [isOcrScanning, setIsOcrScanning] = useState(false);
+  const [isSubmittingBill, setIsSubmittingBill] = useState(false);
 
   // New Purchase Bill form
   const [billNumber, setBillNumber] = useState('BL-9921');
@@ -56,49 +57,55 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({ navigate }) => {
 
   const handleCreateBill = (e: React.FormEvent) => {
     e.preventDefault();
-    const vendor = vendors.find((v) => v.id === selectedVendorId) || vendors[0];
-    const taxable = parseFloat(taxableAmount) || 0;
-    const rate = parseFloat(gstRate) || 0;
-    const totalGst = (taxable * rate) / 100;
-    const cgst = Math.round(totalGst / 2);
-    const sgst = Math.round(totalGst / 2);
-    const totalAmount = taxable + totalGst;
+    if (isSubmittingBill) return;
+    setIsSubmittingBill(true);
 
-    addPurchaseBill({
-      billNumber,
-      vendorId: vendor.id,
-      vendorName: vendor.name,
-      vendorGstin: vendor.gstin,
-      date,
-      dueDate,
-      items: [
-        {
-          id: `p_item_${Date.now()}`,
-          description: 'Industrial Inward Material Purchase',
-          hsn: '7208',
-          quantity: 1,
-          unit: 'SET',
-          rate: taxable,
-          discountPct: 0,
-          gstRate: rate,
-          amount: taxable,
-          cgst,
-          sgst,
-          igst: 0,
-        },
-      ],
-      taxableAmount: taxable,
-      cgst,
-      sgst,
-      igst: 0,
-      totalAmount,
-      amountPaid: 0,
-      status: 'Received',
-      itcEligible,
-    });
+    setTimeout(() => {
+      const vendor = vendors.find((v) => v.id === selectedVendorId) || vendors[0];
+      const taxable = parseFloat(taxableAmount) || 0;
+      const rate = parseFloat(gstRate) || 0;
+      const totalGst = (taxable * rate) / 100;
+      const cgst = Math.round(totalGst / 2);
+      const sgst = Math.round(totalGst / 2);
+      const totalAmount = taxable + totalGst;
 
-    setIsRecordModalOpen(false);
-    setBillNumber(`BL-${Math.floor(1000 + Math.random() * 9000)}`);
+      addPurchaseBill({
+        billNumber,
+        vendorId: vendor.id,
+        vendorName: vendor.name,
+        vendorGstin: vendor.gstin,
+        date,
+        dueDate,
+        items: [
+          {
+            id: `p_item_${Date.now()}`,
+            description: 'Industrial Inward Material Purchase',
+            hsn: '7208',
+            quantity: 1,
+            unit: 'SET',
+            rate: taxable,
+            discountPct: 0,
+            gstRate: rate,
+            amount: taxable,
+            cgst,
+            sgst,
+            igst: 0,
+          },
+        ],
+        taxableAmount: taxable,
+        cgst,
+        sgst,
+        igst: 0,
+        totalAmount,
+        amountPaid: 0,
+        status: 'Received',
+        itcEligible,
+      });
+
+      setIsSubmittingBill(false);
+      setIsRecordModalOpen(false);
+      setBillNumber(`BL-${Math.floor(1000 + Math.random() * 9000)}`);
+    }, 450);
   };
 
   const totalPurchases = purchaseBills.reduce((sum, b) => sum + b.totalAmount, 0);
@@ -140,8 +147,8 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({ navigate }) => {
             }}
             className="bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 text-xs font-semibold px-3.5 py-2 rounded-xs flex items-center gap-1.5 transition-colors"
           >
-            <Sparkles size={14} className="text-amber-600" />
-            <span>AI Bill Ingestion (OCR)</span>
+            <ScanLine size={14} className="text-slate-700" />
+            <span>Bill Ingestion (OCR)</span>
           </button>
           <button
             onClick={() => setIsRecordModalOpen(true)}
@@ -352,9 +359,9 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({ navigate }) => {
 
             {/* OCR Progress Banner if running */}
             {isOcrScanning && (
-              <div className="p-3 bg-amber-50 border-b border-amber-200 text-amber-900 text-xs flex items-center gap-2">
-                <Sparkles size={16} className="animate-spin text-amber-700 shrink-0" />
-                <span>AI Vision Engine reading vendor invoice data & HSN classification...</span>
+              <div className="p-3 bg-slate-100 border-b border-slate-200 text-slate-900 text-xs flex items-center gap-2">
+                <div className="w-3.5 h-3.5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin shrink-0" />
+                <span>Reading vendor invoice data & HSN classification...</span>
               </div>
             )}
 
@@ -475,9 +482,17 @@ export const PurchasesView: React.FC<PurchasesViewProps> = ({ navigate }) => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-slate-950 text-white hover:bg-slate-800 rounded-xs font-semibold"
+                  disabled={isSubmittingBill}
+                  className="px-5 py-2 bg-slate-950 disabled:opacity-50 text-white hover:bg-slate-800 rounded-xs font-semibold flex items-center gap-2"
                 >
-                  Inward Bill to Ledger
+                  {isSubmittingBill ? (
+                    <>
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Posting Bill...</span>
+                    </>
+                  ) : (
+                    <span>Inward Bill to Ledger</span>
+                  )}
                 </button>
               </div>
             </form>

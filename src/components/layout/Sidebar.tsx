@@ -10,7 +10,7 @@ import {
   Briefcase,
   FileSpreadsheet,
   FileText,
-  Sparkles,
+  Bot,
   SearchCode,
   ScanText,
   Lightbulb,
@@ -68,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       group: 'Intelligence',
       items: [
-        { label: 'AI Assistant', route: '/ai-assistant', icon: Sparkles },
+        { label: 'AI Assistant', route: '/ai-assistant', icon: Bot },
         { label: 'AI Insights', route: '/insights', icon: Lightbulb },
         {
           label: 'Review Queue',

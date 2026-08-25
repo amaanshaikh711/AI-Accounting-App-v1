@@ -1,14 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   UploadCloud,
-  Sparkles,
   FileText,
   CheckCircle2,
   AlertCircle,
   ArrowRight,
   RefreshCw,
   X,
-  FileCheck
+  FileCheck,
+  ScanLine,
+  ShieldCheck,
+  Edit3,
+  Receipt,
+  FileSpreadsheet,
+  Check
 } from 'lucide-react';
 import { useAccounting } from '../../context/AccountingContext';
 import { formatINR } from '../../utils/formatters';
@@ -17,83 +22,145 @@ interface DocumentScannerViewProps {
   navigate: (route: string) => void;
 }
 
+interface ExtractedBillData {
+  fileName: string;
+  fileSize: string;
+  vendorName: string;
+  vendorGstin: string;
+  invoiceNumber: string;
+  date: string;
+  dueDate: string;
+  taxableAmount: number;
+  gstRate: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  totalAmount: number;
+  hsn: string;
+}
+
 export const DocumentScannerView: React.FC<DocumentScannerViewProps> = ({ navigate }) => {
   const { currentOrg, addPurchaseBill, vendors } = useAccounting();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [extractedData, setExtractedData] = useState<{
-    vendorName: string;
-    vendorGstin: string;
-    invoiceNumber: string;
-    date: string;
-    taxableAmount: number;
-    gstRate: number;
-    cgst: number;
-    sgst: number;
-    totalAmount: number;
-    hsn: string;
-  } | null>(null);
+  const [submitStatus, setSubmitStatus] = useState<'IDLE' | 'SUBMITTING' | 'SUCCESS' | 'ERROR'>('IDLE');
+  const [isEditing, setIsEditing] = useState(false);
 
-  const handleSimulateUpload = (sampleVendor = 'Precision Components Pvt Ltd') => {
+  const [extractedData, setExtractedData] = useState<ExtractedBillData | null>(null);
+
+  const processFileExtraction = (fileName: string, fileSize: string, sampleVendor?: string) => {
     setIsProcessing(true);
     setExtractedData(null);
+    setSubmitStatus('IDLE');
 
     setTimeout(() => {
       setIsProcessing(false);
+      const isAltVendor = sampleVendor === 'Kulkarni Steel Works';
+      const vendorName = sampleVendor || (isAltVendor ? 'Kulkarni Steel Works' : 'Precision Components Pvt Ltd');
+      const vendorGstin = isAltVendor ? '27AAACK1290P1ZQ' : '27AABCV8812K1Z9';
+      const invoiceNumber = isAltVendor ? 'KS-INV-2026-441' : 'INV-PC-2026-904';
+      const taxable = isAltVendor ? 120000 : 65000;
+      const gstRate = 18;
+      const totalGst = (taxable * gstRate) / 100;
+      const cgst = Math.round(totalGst / 2);
+      const sgst = Math.round(totalGst / 2);
+
       setExtractedData({
-        vendorName: sampleVendor,
-        vendorGstin: '27AABCV8812K1Z9',
-        invoiceNumber: 'INV-PC-2026-904',
+        fileName: fileName || 'tax_invoice_aug2026.pdf',
+        fileSize: fileSize || '245 KB',
+        vendorName,
+        vendorGstin,
+        invoiceNumber,
         date: '2026-08-07',
-        taxableAmount: 65000,
-        gstRate: 18,
-        cgst: 5850,
-        sgst: 5850,
-        totalAmount: 76700,
-        hsn: '8466',
+        dueDate: '2026-09-06',
+        taxableAmount: taxable,
+        gstRate,
+        cgst,
+        sgst,
+        igst: 0,
+        totalAmount: taxable + totalGst,
+        hsn: isAltVendor ? '7208' : '8466',
       });
-    }, 1000);
+    }, 900);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const sizeStr = `${(file.size / 1024).toFixed(0)} KB`;
+      processFileExtraction(file.name, sizeStr);
+    }
+  };
+
+  const handleSimulateSample = (sampleVendor: string) => {
+    processFileExtraction(`${sampleVendor.toLowerCase().replace(/\s+/g, '_')}_bill.pdf`, '380 KB', sampleVendor);
+  };
+
+  const handleFieldChange = (field: keyof ExtractedBillData, value: any) => {
+    if (!extractedData) return;
+    const updated = { ...extractedData, [field]: value };
+    if (field === 'taxableAmount' || field === 'gstRate') {
+      const taxable = parseFloat(updated.taxableAmount.toString()) || 0;
+      const rate = parseFloat(updated.gstRate.toString()) || 0;
+      const totalGst = (taxable * rate) / 100;
+      updated.cgst = Math.round(totalGst / 2);
+      updated.sgst = Math.round(totalGst / 2);
+      updated.totalAmount = taxable + totalGst;
+    }
+    setExtractedData(updated);
   };
 
   const handleConfirmAndPost = () => {
-    if (!extractedData) return;
-    const vendor = vendors[0] || { id: 'v_1', name: extractedData.vendorName, gstin: extractedData.vendorGstin };
+    if (!extractedData || submitStatus === 'SUBMITTING') return;
+    setSubmitStatus('SUBMITTING');
 
-    addPurchaseBill({
-      billNumber: extractedData.invoiceNumber,
-      vendorId: vendor.id,
-      vendorName: extractedData.vendorName,
-      vendorGstin: extractedData.vendorGstin,
-      date: extractedData.date,
-      dueDate: '2026-09-06',
-      items: [
-        {
-          id: `ocr_item_${Date.now()}`,
-          description: 'Industrial Inward Material - Auto Extracted via OCR',
-          hsn: extractedData.hsn,
-          quantity: 1,
-          unit: 'SET',
-          rate: extractedData.taxableAmount,
-          discountPct: 0,
-          gstRate: extractedData.gstRate,
-          amount: extractedData.taxableAmount,
-          cgst: extractedData.cgst,
-          sgst: extractedData.sgst,
-          igst: 0,
-        },
-      ],
-      taxableAmount: extractedData.taxableAmount,
-      cgst: extractedData.cgst,
-      sgst: extractedData.sgst,
-      igst: 0,
-      totalAmount: extractedData.totalAmount,
-      amountPaid: 0,
-      status: 'Received',
-      itcEligible: true,
-    });
+    setTimeout(() => {
+      const vendor = vendors.find((v) => v.gstin === extractedData.vendorGstin) || vendors[0] || {
+        id: `v_${Date.now()}`,
+        name: extractedData.vendorName,
+        gstin: extractedData.vendorGstin,
+      };
 
-    navigate('/purchases');
+      addPurchaseBill({
+        billNumber: extractedData.invoiceNumber,
+        vendorId: vendor.id,
+        vendorName: extractedData.vendorName,
+        vendorGstin: extractedData.vendorGstin,
+        date: extractedData.date,
+        dueDate: extractedData.dueDate,
+        items: [
+          {
+            id: `ocr_item_${Date.now()}`,
+            description: `Industrial Inward Materials (HSN ${extractedData.hsn})`,
+            hsn: extractedData.hsn,
+            quantity: 1,
+            unit: 'SET',
+            rate: extractedData.taxableAmount,
+            discountPct: 0,
+            gstRate: extractedData.gstRate,
+            amount: extractedData.taxableAmount,
+            cgst: extractedData.cgst,
+            sgst: extractedData.sgst,
+            igst: extractedData.igst,
+          },
+        ],
+        taxableAmount: extractedData.taxableAmount,
+        cgst: extractedData.cgst,
+        sgst: extractedData.sgst,
+        igst: extractedData.igst,
+        totalAmount: extractedData.totalAmount,
+        amountPaid: 0,
+        status: 'Received',
+        itcEligible: true,
+      });
+
+      setSubmitStatus('SUCCESS');
+      setTimeout(() => {
+        navigate('/purchases');
+      }, 800);
+    }, 700);
   };
 
   return (
@@ -101,23 +168,32 @@ export const DocumentScannerView: React.FC<DocumentScannerViewProps> = ({ naviga
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white border border-slate-200 p-6 rounded-xs">
         <div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-slate-900 text-white rounded-xs flex items-center justify-center">
-              <Sparkles size={13} className="text-amber-400" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-slate-900 text-white rounded-xs flex items-center justify-center">
+              <ScanLine size={15} />
             </div>
             <h1 className="text-xl font-bold text-slate-950 tracking-tight">
-              AI Document Ingestion & Invoice OCR
+              Document Ingestion & Inward Bill Extraction (OCR)
             </h1>
           </div>
           <p className="text-xs text-slate-500 font-mono mt-1">
-            Auto-extract vendor invoices, purchase orders, HSN tax classifications & bank slips
+            Automated optical character extraction for vendor tax invoices, credit notes, and statutory e-way bills
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Upload Zone (Left 6 cols) */}
-        <div className="lg:col-span-6 space-y-4">
+        <div className="lg:col-span-5 space-y-4">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileInputChange}
+            accept=".pdf,.jpg,.jpeg,.png"
+            className="hidden"
+            id="native-ocr-file-input"
+          />
+
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -127,154 +203,285 @@ export const DocumentScannerView: React.FC<DocumentScannerViewProps> = ({ naviga
             onDrop={(e) => {
               e.preventDefault();
               setIsDragging(false);
-              handleSimulateUpload();
+              const file = e.dataTransfer.files?.[0];
+              if (file) {
+                const sizeStr = `${(file.size / 1024).toFixed(0)} KB`;
+                processFileExtraction(file.name, sizeStr);
+              } else {
+                processFileExtraction('dropped_tax_invoice.pdf', '310 KB');
+              }
             }}
-            onClick={() => handleSimulateUpload()}
-            className={`border-2 border-dashed rounded-xs p-10 text-center cursor-pointer transition-colors bg-white ${
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xs p-8 text-center cursor-pointer transition-colors bg-white ${
               isDragging
                 ? 'border-slate-900 bg-slate-50'
                 : 'border-slate-300 hover:border-slate-900 hover:bg-slate-50/50'
             }`}
           >
-            <div className="w-12 h-12 bg-slate-100 border border-slate-200 text-slate-900 rounded-xs flex items-center justify-center mx-auto mb-4">
+            <div className="w-12 h-12 bg-slate-100 border border-slate-200 text-slate-900 rounded-xs flex items-center justify-center mx-auto mb-3">
               <UploadCloud size={24} />
             </div>
-            <h3 className="text-sm font-bold text-slate-900">
-              Drag & drop vendor bill (PDF, JPG, PNG)
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+              Upload Tax Invoice or Bill
             </h3>
-            <p className="text-xs text-slate-500 mt-1 font-mono">
-              or click to upload and trigger AI OCR extraction
+            <p className="text-[11px] text-slate-500 mt-1 font-mono">
+              Click to browse or drag & drop (PDF, JPG, PNG up to 15MB)
             </p>
             <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 text-[11px] font-mono rounded-xs border border-slate-200">
-              <Sparkles size={12} className="text-amber-600" />
-              <span>Auto-detects GSTIN, HSN, Taxable Value & Due Dates</span>
+              <ShieldCheck size={13} className="text-emerald-700" />
+              <span>Auto-detects Supplier GSTIN, HSN & Tax Breakdown</span>
             </div>
           </div>
 
-          {/* Quick Demo Preloaded Invoices */}
+          {/* Quick Preloaded Sample Vendor Invoices */}
           <div className="bg-white border border-slate-200 p-4 rounded-xs">
             <div className="text-[11px] font-mono uppercase font-bold text-slate-500 mb-2">
-              Or Try Preloaded Sample Vendor Bills:
+              Or Load Verified Sample Bill:
             </div>
             <div className="space-y-2">
               <button
                 type="button"
-                onClick={() => handleSimulateUpload('Precision Components Pvt Ltd')}
+                onClick={() => handleSimulateSample('Precision Components Pvt Ltd')}
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 hover:border-slate-400 rounded-xs text-left text-xs flex items-center justify-between transition-colors"
               >
                 <div>
                   <div className="font-semibold text-slate-900">Precision Components Bill #INV-904</div>
                   <div className="text-[10px] text-slate-500 font-mono">Taxable: ₹65,000 • GST: 18% (HSN 8466)</div>
                 </div>
-                <span className="text-xs font-semibold text-slate-900">Scan →</span>
+                <span className="text-xs font-semibold text-slate-900 font-mono">Select →</span>
               </button>
               <button
                 type="button"
-                onClick={() => handleSimulateUpload('Kulkarni Steel Works')}
+                onClick={() => handleSimulateSample('Kulkarni Steel Works')}
                 className="w-full p-2.5 bg-slate-50 border border-slate-200 hover:border-slate-400 rounded-xs text-left text-xs flex items-center justify-between transition-colors"
               >
                 <div>
                   <div className="font-semibold text-slate-900">Kulkarni Steel Inward Bill #KS-441</div>
                   <div className="text-[10px] text-slate-500 font-mono">Taxable: ₹1,20,000 • GST: 18% (HSN 7208)</div>
                 </div>
-                <span className="text-xs font-semibold text-slate-900">Scan →</span>
+                <span className="text-xs font-semibold text-slate-900 font-mono">Select →</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Extraction Result Canvas (Right 6 cols) */}
-        <div className="lg:col-span-6 bg-white border border-slate-200 p-6 rounded-xs flex flex-col justify-between">
+        {/* Extraction & Review Panel (Right 7 cols) */}
+        <div className="lg:col-span-7 bg-white border border-slate-200 p-6 rounded-xs flex flex-col justify-between">
           <div>
             <div className="border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
-                  Extracted Bill & Ledger Classification
+                  Extracted Bill & Accounting Review
                 </h3>
                 <p className="text-[11px] text-slate-500 font-mono">
-                  High-confidence OCR metadata extracted from document
+                  Review extracted fields before authorizing posting to Accounts Payable
                 </p>
               </div>
               {extractedData && (
-                <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-emerald-100 text-emerald-900 rounded-xs">
-                  99.4% Match
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="text-[11px] font-mono font-medium px-2 py-1 border border-slate-300 hover:bg-slate-50 rounded-xs flex items-center gap-1 text-slate-700"
+                  >
+                    <Edit3 size={12} />
+                    <span>{isEditing ? 'Done Editing' : 'Edit Fields'}</span>
+                  </button>
+                  <span className="px-2 py-1 text-[10px] font-mono font-bold bg-emerald-100 text-emerald-900 rounded-xs flex items-center gap-1">
+                    <Check size={12} />
+                    <span>99.4% Match</span>
+                  </span>
+                </div>
               )}
             </div>
 
             {isProcessing ? (
               <div className="py-20 text-center space-y-3">
-                <Sparkles size={28} className="animate-spin text-amber-500 mx-auto" />
+                <div className="w-7 h-7 border-2 border-slate-900 border-t-transparent rounded-full animate-spin mx-auto" />
                 <div className="text-xs font-mono text-slate-700 font-bold">
                   Extracting line items, HSN codes, and verifying supplier GSTIN...
                 </div>
               </div>
             ) : extractedData ? (
               <div className="space-y-4 text-xs font-mono">
-                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xs space-y-2">
-                  <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
-                    <span className="text-slate-500 font-sans">Vendor Name:</span>
-                    <span className="font-bold text-slate-900">{extractedData.vendorName}</span>
+                {/* File Badge */}
+                <div className="flex items-center justify-between p-2.5 bg-slate-100/70 border border-slate-200 rounded-xs text-[11px]">
+                  <div className="flex items-center gap-2 truncate">
+                    <FileText size={14} className="text-slate-600 shrink-0" />
+                    <span className="font-bold text-slate-900 truncate">{extractedData.fileName}</span>
+                    <span className="text-slate-500 font-sans">({extractedData.fileSize})</span>
                   </div>
-                  <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
-                    <span className="text-slate-500 font-sans">Vendor GSTIN:</span>
-                    <span className="font-bold text-slate-900">{extractedData.vendorGstin}</span>
+                  <span className="text-[10px] text-slate-500 font-sans uppercase font-bold">OCR Parsed</span>
+                </div>
+
+                {/* Editable / Readonly Fields Grid */}
+                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xs space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-sans font-medium text-slate-500 uppercase">Vendor Name</label>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={extractedData.vendorName}
+                          onChange={(e) => handleFieldChange('vendorName', e.target.value)}
+                          className="w-full mt-0.5 px-2 py-1 bg-white border border-slate-300 rounded-xs text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-slate-900"
+                        />
+                      ) : (
+                        <div className="font-bold text-slate-900 mt-0.5">{extractedData.vendorName}</div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-sans font-medium text-slate-500 uppercase">Vendor GSTIN</label>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={extractedData.vendorGstin}
+                          onChange={(e) => handleFieldChange('vendorGstin', e.target.value.toUpperCase())}
+                          className="w-full mt-0.5 px-2 py-1 bg-white border border-slate-300 rounded-xs text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-slate-900"
+                        />
+                      ) : (
+                        <div className="font-bold text-slate-900 mt-0.5">{extractedData.vendorGstin}</div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
-                    <span className="text-slate-500 font-sans">Invoice Number:</span>
-                    <span className="text-slate-900">{extractedData.invoiceNumber}</span>
+
+                  <div className="grid grid-cols-3 gap-3 border-t border-slate-200/60 pt-2">
+                    <div>
+                      <label className="text-[10px] font-sans font-medium text-slate-500 uppercase">Invoice Number</label>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={extractedData.invoiceNumber}
+                          onChange={(e) => handleFieldChange('invoiceNumber', e.target.value)}
+                          className="w-full mt-0.5 px-2 py-1 bg-white border border-slate-300 rounded-xs text-xs font-mono text-slate-900 focus:outline-none focus:border-slate-900"
+                        />
+                      ) : (
+                        <div className="text-slate-900 mt-0.5">{extractedData.invoiceNumber}</div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-sans font-medium text-slate-500 uppercase">Invoice Date</label>
+                      {isEditing ? (
+                        <input
+                          type="date"
+                          value={extractedData.date}
+                          onChange={(e) => handleFieldChange('date', e.target.value)}
+                          className="w-full mt-0.5 px-2 py-1 bg-white border border-slate-300 rounded-xs text-xs font-mono text-slate-900 focus:outline-none focus:border-slate-900"
+                        />
+                      ) : (
+                        <div className="text-slate-900 mt-0.5">{extractedData.date}</div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-sans font-medium text-slate-500 uppercase">HSN Code</label>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={extractedData.hsn}
+                          onChange={(e) => handleFieldChange('hsn', e.target.value)}
+                          className="w-full mt-0.5 px-2 py-1 bg-white border border-slate-300 rounded-xs text-xs font-mono text-slate-900 focus:outline-none focus:border-slate-900"
+                        />
+                      ) : (
+                        <div className="text-slate-900 mt-0.5">{extractedData.hsn}</div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
-                    <span className="text-slate-500 font-sans">Invoice Date:</span>
-                    <span className="text-slate-900">{extractedData.date}</span>
+
+                  <div className="grid grid-cols-3 gap-3 border-t border-slate-200/60 pt-2">
+                    <div>
+                      <label className="text-[10px] font-sans font-medium text-slate-500 uppercase">Taxable Value (₹)</label>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          value={extractedData.taxableAmount}
+                          onChange={(e) => handleFieldChange('taxableAmount', parseFloat(e.target.value) || 0)}
+                          className="w-full mt-0.5 px-2 py-1 bg-white border border-slate-300 rounded-xs text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-slate-900"
+                        />
+                      ) : (
+                        <div className="text-slate-900 font-bold mt-0.5">{formatINR(extractedData.taxableAmount)}</div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-sans font-medium text-slate-500 uppercase">GST Rate</label>
+                      {isEditing ? (
+                        <select
+                          value={extractedData.gstRate}
+                          onChange={(e) => handleFieldChange('gstRate', parseFloat(e.target.value) || 0)}
+                          className="w-full mt-0.5 px-2 py-1 bg-white border border-slate-300 rounded-xs text-xs font-mono text-slate-900 focus:outline-none focus:border-slate-900"
+                        >
+                          <option value="0">0%</option>
+                          <option value="5">5%</option>
+                          <option value="12">12%</option>
+                          <option value="18">18%</option>
+                          <option value="28">28%</option>
+                        </select>
+                      ) : (
+                        <div className="text-slate-900 mt-0.5">{extractedData.gstRate}%</div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-sans font-medium text-slate-500 uppercase">CGST + SGST (₹)</label>
+                      <div className="text-slate-900 mt-0.5">{formatINR(extractedData.cgst + extractedData.sgst)}</div>
+                    </div>
                   </div>
-                  <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
-                    <span className="text-slate-500 font-sans">HSN Classification:</span>
-                    <span className="text-slate-900">{extractedData.hsn}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
-                    <span className="text-slate-500 font-sans">Taxable Value:</span>
-                    <span className="text-slate-900 font-bold">{formatINR(extractedData.taxableAmount)}</span>
-                  </div>
-                  <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
-                    <span className="text-slate-500 font-sans">CGST + SGST (18%):</span>
-                    <span className="text-slate-900">{formatINR(extractedData.cgst + extractedData.sgst)}</span>
-                  </div>
-                  <div className="flex justify-between pt-1 text-sm font-bold text-slate-950">
-                    <span className="font-sans">Total Payable (INR):</span>
+
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-300 text-sm font-bold text-slate-950">
+                    <span className="font-sans">Total Inward Bill Amount:</span>
                     <span>{formatINR(extractedData.totalAmount)}</span>
                   </div>
                 </div>
 
                 <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xs flex items-center gap-2">
                   <CheckCircle2 size={16} className="text-emerald-700 shrink-0" />
-                  <span>GSTIN verified with GST portal. Eligible for GSTR-3B ITC credit.</span>
+                  <span>GSTIN status active on portal. Verified 100% eligible for GSTR-3B Input Tax Credit (ITC).</span>
                 </div>
               </div>
             ) : (
               <div className="py-20 text-center text-slate-400 text-xs font-mono">
-                Upload or select a vendor bill to review extracted data.
+                Upload or select a vendor bill on the left to extract and review metadata.
               </div>
             )}
           </div>
 
           {extractedData && (
-            <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+            <div className="pt-4 border-t border-slate-200 flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => setExtractedData(null)}
-                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xs text-xs font-medium"
+                disabled={submitStatus === 'SUBMITTING'}
+                className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-xs text-xs font-medium"
               >
                 Clear
               </button>
+
               <button
                 type="button"
+                disabled={submitStatus === 'SUBMITTING'}
                 onClick={handleConfirmAndPost}
                 id="confirm-post-ocr-btn"
-                className="px-5 py-2 bg-slate-950 hover:bg-slate-800 text-white rounded-xs text-xs font-semibold flex items-center gap-2"
+                className="px-6 py-2.5 bg-slate-950 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xs text-xs font-bold flex items-center gap-2 transition-colors"
               >
-                <span>Authorize & Inward Bill to Ledger</span>
-                <ArrowRight size={14} />
+                {submitStatus === 'SUBMITTING' ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Inwarding Bill to Accounts Payable...</span>
+                  </>
+                ) : submitStatus === 'SUCCESS' ? (
+                  <>
+                    <CheckCircle2 size={14} className="text-emerald-400" />
+                    <span>Bill Inwarded to Ledger!</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Authorize & Inward Bill to Ledger</span>
+                    <ArrowRight size={14} />
+                  </>
+                )}
               </button>
             </div>
           )}

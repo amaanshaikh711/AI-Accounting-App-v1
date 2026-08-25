@@ -985,7 +985,7 @@ export const CreateOrganizationPage: React.FC<CreateOrganizationPageProps> = ({ 
                   </>
                 ) : (
                   <>
-                    <Sparkles size={15} />
+                    <Building2 size={15} />
                     <span>Register Business & Launch Workspace</span>
                     <ArrowRight size={14} />
                   </>

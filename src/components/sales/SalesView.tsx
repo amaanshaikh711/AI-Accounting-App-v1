@@ -30,6 +30,7 @@ export const SalesView: React.FC<SalesViewProps> = ({ navigate }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSubmittingInvoice, setIsSubmittingInvoice] = useState(false);
 
   // New Invoice Form State
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-2026-${1029 + invoices.length}`);
@@ -38,6 +39,8 @@ export const SalesView: React.FC<SalesViewProps> = ({ navigate }) => {
   const [dueDate, setDueDate] = useState('2026-09-07');
   const [isInterstate, setIsInterstate] = useState(false);
   const [notes, setNotes] = useState('Payment terms: Net 30 days. Please remit via RTGS/NEFT to HDFC Bank A/c #0060.');
+
+  const selectedCustomerObj = customers.find((c) => c.id === selectedCustomerId) || customers[0];
 
   const [items, setItems] = useState<InvoiceItem[]>([
     {
@@ -122,30 +125,36 @@ export const SalesView: React.FC<SalesViewProps> = ({ navigate }) => {
 
   const handleCreateInvoice = (e: React.FormEvent) => {
     e.preventDefault();
-    const cust = customers.find((c) => c.id === selectedCustomerId) || customers[0];
+    if (isSubmittingInvoice) return;
+    setIsSubmittingInvoice(true);
 
-    addInvoice({
-      invoiceNumber,
-      customerId: cust.id,
-      customerName: cust.name,
-      customerGstin: cust.gstin,
-      date: invoiceDate,
-      dueDate,
-      items,
-      subtotal,
-      discount: totalDiscount,
-      taxableAmount,
-      cgst: totalCgst,
-      sgst: totalSgst,
-      igst: totalIgst,
-      totalAmount: totalInvoiceAmount,
-      amountPaid: 0,
-      status: 'Sent',
-      notes,
-    });
+    setTimeout(() => {
+      const cust = customers.find((c) => c.id === selectedCustomerId) || customers[0];
 
-    setIsCreateModalOpen(false);
-    setInvoiceNumber(`INV-2026-${1030 + invoices.length}`);
+      addInvoice({
+        invoiceNumber,
+        customerId: cust.id,
+        customerName: cust.name,
+        customerGstin: cust.gstin,
+        date: invoiceDate,
+        dueDate,
+        items,
+        subtotal,
+        discount: totalDiscount,
+        taxableAmount,
+        cgst: totalCgst,
+        sgst: totalSgst,
+        igst: totalIgst,
+        totalAmount: totalInvoiceAmount,
+        amountPaid: 0,
+        status: 'Sent',
+        notes,
+      });
+
+      setIsSubmittingInvoice(false);
+      setIsCreateModalOpen(false);
+      setInvoiceNumber(`INV-2026-${1030 + invoices.length}`);
+    }, 450);
   };
 
   // Metrics
@@ -429,6 +438,14 @@ export const SalesView: React.FC<SalesViewProps> = ({ navigate }) => {
                       </option>
                     ))}
                   </select>
+
+                  {selectedCustomerObj && (
+                    <div className="mt-1.5 p-2 bg-slate-50 border border-slate-200 rounded-xs text-[11px] font-mono text-slate-600 flex flex-wrap items-center justify-between gap-1">
+                      <span>State: <strong className="text-slate-900">{selectedCustomerObj.state}</strong></span>
+                      <span>GSTIN: <strong className="text-slate-900">{selectedCustomerObj.gstin}</strong></span>
+                      <span>Terms: <strong className="text-slate-900">{selectedCustomerObj.paymentTerms}</strong></span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -673,10 +690,18 @@ export const SalesView: React.FC<SalesViewProps> = ({ navigate }) => {
                 </button>
                 <button
                   type="submit"
+                  disabled={isSubmittingInvoice}
                   id="submit-invoice-btn"
-                  className="px-6 py-2.5 bg-slate-950 text-white hover:bg-slate-800 rounded-xs font-semibold"
+                  className="px-6 py-2.5 bg-slate-950 disabled:opacity-50 text-white hover:bg-slate-800 rounded-xs font-semibold flex items-center gap-2"
                 >
-                  Save & Authorize Invoice
+                  {isSubmittingInvoice ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Posting & Authorizing Invoice...</span>
+                    </>
+                  ) : (
+                    <span>Save & Authorize Invoice</span>
+                  )}
                 </button>
               </div>
             </form>

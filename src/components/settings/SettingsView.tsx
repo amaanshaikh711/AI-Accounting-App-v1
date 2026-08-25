@@ -35,6 +35,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ navigate }) => {
   const [state, setState] = useState(currentOrg?.state || '');
   const [pincode, setPincode] = useState(currentOrg?.pincode || '');
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
 
   // Invite user state
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -44,19 +45,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ navigate }) => {
 
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentOrg) {
-      updateOrganization(currentOrg.id, {
-        name,
-        tradeName,
-        gstin,
-        pan,
-        address,
-        city,
-        state,
-        pincode,
-      });
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 2500);
+    if (currentOrg && !isSubmittingProfile) {
+      setIsSubmittingProfile(true);
+      setTimeout(() => {
+        updateOrganization(currentOrg.id, {
+          name,
+          tradeName,
+          gstin,
+          pan,
+          address,
+          city,
+          state,
+          pincode,
+        });
+        setIsSubmittingProfile(false);
+        setSavedSuccess(true);
+        setTimeout(() => setSavedSuccess(false), 2500);
+      }, 400);
     }
   };
 
@@ -242,10 +247,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ navigate }) => {
             <div className="pt-4 border-t border-slate-200">
               <button
                 type="submit"
-                className="bg-slate-950 hover:bg-slate-800 text-white font-semibold px-5 py-2.5 rounded-xs transition-colors flex items-center gap-2"
+                disabled={isSubmittingProfile}
+                className="bg-slate-950 hover:bg-slate-800 disabled:opacity-50 text-white font-semibold px-5 py-2.5 rounded-xs transition-colors flex items-center gap-2"
               >
-                <Save size={14} />
-                <span>Update Master Profile</span>
+                {isSubmittingProfile ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Updating Master Profile...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save size={14} />
+                    <span>Update Master Profile</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
