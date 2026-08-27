@@ -624,8 +624,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ navigate }) => {
             className="absolute inset-0 bg-neutral-900/40 backdrop-blur-2xs transition-opacity"
             onClick={() => setSelectedTransaction(null)}
           />
-          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-            <div className="w-screen max-w-md bg-white shadow-2xl border-l border-neutral-200 flex flex-col">
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 xs:pl-6 sm:pl-10">
+            <div className="w-screen max-w-full xs:max-w-md bg-white shadow-2xl border-l border-neutral-200 flex flex-col">
               <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-widest text-neutral-900 font-mono">

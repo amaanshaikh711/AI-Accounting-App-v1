@@ -20,6 +20,7 @@
     color: #171717;
     -webkit-font-smoothing: antialiased;
     letter-spacing: -0.01em;
+    overflow-x: hidden;
   }
 
   input, select, textarea, button {
@@ -42,6 +43,7 @@
 }
 ::-webkit-scrollbar-thumb {
   background: #D4D4D8;
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #A1A1AA;
@@ -58,6 +60,7 @@
   border-bottom: 1px solid #E5E7EB;
   padding: 0.75rem 1rem;
   background-color: #FAFAFA;
+  white-space: nowrap;
 }
 
 .polish-table td,
@@ -70,6 +73,16 @@
 .polish-table tr:hover td,
 .swiss-table tr:hover td {
   background-color: #FAFAFA;
+}
+
+/* Accessibility: Respect Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 

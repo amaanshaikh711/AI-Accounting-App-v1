@@ -223,7 +223,7 @@ export const CreateOrganizationPage: React.FC<CreateOrganizationPageProps> = ({ 
           </div>
           <div>
             <div className="text-xs font-bold tracking-widest text-neutral-900 uppercase">
-              AI ACCOUNTING
+              AICOUNTS
             </div>
             <div className="text-[10px] text-neutral-500 font-mono">
               Enterprise Multi-Tenant Registration

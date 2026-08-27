@@ -63,7 +63,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ navigate }) => {
             AI
           </div>
           <span className="text-sm font-bold tracking-widest text-slate-900 uppercase">
-            AI ACCOUNTING
+            AICOUNTS
           </span>
         </button>
       </div>

@@ -28,7 +28,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ navigate }) => {
             </div>
             <div>
               <span className="text-sm font-bold tracking-widest text-slate-900 uppercase">
-                AI ACCOUNTING
+                AICOUNTS
               </span>
               <span className="hidden sm:inline-block ml-2 text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-xs font-mono border border-slate-200">
                 INDIA EDITION

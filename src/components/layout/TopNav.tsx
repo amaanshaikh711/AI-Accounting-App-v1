@@ -12,7 +12,8 @@ import {
   Calendar,
   AlertCircle,
   Shield,
-  Briefcase
+  Briefcase,
+  Menu,
 } from 'lucide-react';
 import { useAccounting } from '../../context/AccountingContext';
 
@@ -21,6 +22,7 @@ interface TopNavProps {
   navigate: (route: string) => void;
   openSearch: () => void;
   openNotifications: () => void;
+  openMobileMenu?: () => void;
 }
 
 export const TopNav: React.FC<TopNavProps> = ({
@@ -28,6 +30,7 @@ export const TopNav: React.FC<TopNavProps> = ({
   navigate,
   openSearch,
   openNotifications,
+  openMobileMenu,
 }) => {
   const {
     currentUser,
@@ -101,34 +104,37 @@ export const TopNav: React.FC<TopNavProps> = ({
     }
   };
 
-  const { title, category } = getPageTitle(currentRoute);
-
-  const todayFormatted = new Intl.DateTimeFormat('en-IN', {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date());
+  const { title } = getPageTitle(currentRoute);
 
   return (
-    <header className="h-16 bg-white border-b border-neutral-200 px-6 sm:px-8 flex items-center justify-between sticky top-0 z-20 shrink-0">
-      {/* Left: Organization / FY Context & Breadcrumbs */}
-      <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
+    <header className="h-16 bg-white border-b border-neutral-200 px-3 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-20 shrink-0">
+      {/* Left: Mobile Menu Button & Organization Switcher */}
+      <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
+        {/* Mobile Hamburger Menu Toggle */}
+        <button
+          onClick={openMobileMenu}
+          className="p-1.5 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded lg:hidden focus:outline-none transition-colors shrink-0"
+          title="Open Navigation"
+          id="open-mobile-menu-btn"
+        >
+          <Menu size={20} />
+        </button>
+
         {/* Organization Switcher Dropdown */}
-        <div className="relative" ref={orgRef}>
+        <div className="relative shrink-0 max-w-[140px] xs:max-w-[180px] sm:max-w-[240px]" ref={orgRef}>
           <button
             onClick={() => setOrgDropdownOpen(!orgDropdownOpen)}
             id="org-switcher-btn"
-            className="flex items-center px-3 py-1.5 border border-neutral-200 bg-neutral-50 text-xs font-medium text-neutral-900 hover:bg-neutral-100 transition-colors"
+            className="flex items-center px-2.5 sm:px-3 py-1.5 border border-neutral-200 bg-neutral-50 text-xs font-medium text-neutral-900 hover:bg-neutral-100 transition-colors w-full"
           >
-            <span className="mr-2 uppercase tracking-tight truncate max-w-[140px] sm:max-w-[200px]">
+            <span className="mr-1.5 sm:mr-2 uppercase tracking-tight truncate">
               {currentOrg ? currentOrg.name : 'Select Business'}
             </span>
-            <ChevronDown size={12} className="text-neutral-500" />
+            <ChevronDown size={12} className="text-neutral-500 shrink-0" />
           </button>
 
           {orgDropdownOpen && (
-            <div className="absolute left-0 mt-1.5 w-72 bg-white border border-neutral-200 shadow-xl py-1.5 z-50 text-xs">
+            <div className="absolute left-0 mt-1.5 w-72 max-w-[calc(100vw-1.5rem)] bg-white border border-neutral-200 shadow-xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
               <div className="px-3 py-1.5 border-b border-neutral-100 text-[10px] font-bold uppercase tracking-widest text-neutral-400">
                 Organizations & Tenants
               </div>
@@ -181,14 +187,14 @@ export const TopNav: React.FC<TopNavProps> = ({
           )}
         </div>
 
-        <span className="text-neutral-300">|</span>
-        <span className="text-xs font-medium text-neutral-500 uppercase tracking-widest hidden sm:inline">
+        <span className="text-neutral-300 hidden sm:inline">|</span>
+        <span className="text-xs font-medium text-neutral-500 uppercase tracking-widest hidden md:inline truncate">
           FY {currentOrg?.financialYear || '2026-27'}
         </span>
       </div>
 
       {/* Right Tools: Search, Action Badge, Notifications, Date, Profile */}
-      <div className="flex items-center space-x-4 sm:space-x-6">
+      <div className="flex items-center space-x-2 sm:space-x-4 lg:space-x-5">
         {/* Global Search input trigger */}
         <div className="relative">
           <input
@@ -196,7 +202,7 @@ export const TopNav: React.FC<TopNavProps> = ({
             readOnly
             onClick={openSearch}
             placeholder="Search records..."
-            className="bg-neutral-100 border-none px-4 py-1.5 text-xs w-36 sm:w-48 focus:ring-1 focus:ring-neutral-400 outline-none cursor-pointer placeholder:text-neutral-400"
+            className="bg-neutral-100 border-none px-3 sm:px-4 py-1.5 text-xs w-28 xs:w-36 sm:w-44 md:w-48 focus:ring-1 focus:ring-neutral-400 outline-none cursor-pointer placeholder:text-neutral-400 rounded-xs transition-all"
           />
         </div>
 
@@ -205,7 +211,7 @@ export const TopNav: React.FC<TopNavProps> = ({
           <button
             onClick={() => navigate('/review')}
             id="action-required-header-btn"
-            className="hidden md:flex items-center gap-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 text-xs px-2.5 py-1 transition-colors font-medium border border-neutral-300"
+            className="hidden sm:flex items-center gap-1.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-900 text-xs px-2.5 py-1 transition-colors font-medium border border-neutral-300 rounded-xs shrink-0"
           >
             <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
             <span>{metrics.pendingReviewCount} Issues</span>
@@ -216,29 +222,29 @@ export const TopNav: React.FC<TopNavProps> = ({
         <button
           onClick={openNotifications}
           id="notifications-btn"
-          className="relative text-neutral-400 hover:text-neutral-900 cursor-pointer transition-colors p-1"
+          className="relative text-neutral-400 hover:text-neutral-900 cursor-pointer transition-colors p-1.5 shrink-0"
           title="Notifications"
         >
           <Bell size={18} />
           {unreadNotifs > 0 && (
-            <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
+            <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
           )}
         </button>
 
         {/* User Profile */}
-        <div className="relative" ref={profileRef}>
+        <div className="relative shrink-0" ref={profileRef}>
           <button
             onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
             id="user-profile-menu-btn"
             className="flex items-center cursor-pointer focus:outline-none"
           >
-            <div className="w-8 h-8 bg-neutral-900 flex items-center justify-center text-white text-xs font-bold font-mono">
+            <div className="w-8 h-8 bg-neutral-900 flex items-center justify-center text-white text-xs font-bold font-mono hover:bg-neutral-800 transition-colors">
               {currentUser?.avatar || 'AM'}
             </div>
           </button>
 
           {profileDropdownOpen && (
-            <div className="absolute right-0 mt-1.5 w-60 bg-white border border-neutral-200 shadow-xl py-1.5 z-50 text-xs">
+            <div className="absolute right-0 mt-1.5 w-60 max-w-[calc(100vw-1.5rem)] bg-white border border-neutral-200 shadow-xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
               <div className="px-3 py-2 border-b border-neutral-100">
                 <div className="font-semibold text-neutral-900">{currentUser?.name || 'Amaan Sharma'}</div>
                 <div className="text-neutral-500 text-[11px] font-mono truncate">{currentUser?.email}</div>
@@ -254,9 +260,9 @@ export const TopNav: React.FC<TopNavProps> = ({
                     setProfileDropdownOpen(false);
                     navigate('/settings/business');
                   }}
-                  className="w-full text-left px-3 py-2 text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
+                  className="w-full text-left px-3 py-1.5 text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
                 >
-                  <Settings size={14} className="text-neutral-500" />
+                  <Settings size={13} className="text-neutral-500" />
                   <span>Business Settings</span>
                 </button>
                 <button
@@ -264,20 +270,10 @@ export const TopNav: React.FC<TopNavProps> = ({
                     setProfileDropdownOpen(false);
                     navigate('/settings/users');
                   }}
-                  className="w-full text-left px-3 py-2 text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
+                  className="w-full text-left px-3 py-1.5 text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
                 >
-                  <UserIcon size={14} className="text-neutral-500" />
-                  <span>Users & Permissions</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setProfileDropdownOpen(false);
-                    navigate('/audit-log');
-                  }}
-                  className="w-full text-left px-3 py-2 text-neutral-700 hover:bg-neutral-50 flex items-center gap-2"
-                >
-                  <Briefcase size={14} className="text-neutral-500" />
-                  <span>Audit Trail</span>
+                  <UserIcon size={13} className="text-neutral-500" />
+                  <span>User & Access Control</span>
                 </button>
               </div>
 
@@ -288,10 +284,10 @@ export const TopNav: React.FC<TopNavProps> = ({
                     logout();
                     navigate('/login');
                   }}
-                  id="user-logout-btn"
-                  className="w-full text-left px-3 py-2 text-red-600 hover:bg-red-50 flex items-center gap-2 font-medium"
+                  id="logout-nav-btn"
+                  className="w-full text-left px-3 py-1.5 text-red-600 hover:bg-red-50 flex items-center gap-2 font-medium"
                 >
-                  <LogOut size={14} />
+                  <LogOut size={13} />
                   <span>Sign Out</span>
                 </button>
               </div>

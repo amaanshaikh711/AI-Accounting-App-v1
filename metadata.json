@@ -1,6 +1,6 @@
 {
-  "name": "AI Accounting",
-  "description": "A Swiss Minimalist, India-focused AI Accounting SaaS platform for experienced accountants, CAs, and business owners.",
+  "name": "AICounts",
+  "description": "AICounts — Smart Accounting, Simplified. India-focused financial accounting platform for businesses, CAs, and accountants.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

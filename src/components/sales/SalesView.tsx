@@ -498,7 +498,8 @@ export const SalesView: React.FC<SalesViewProps> = ({ navigate }) => {
                 <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200 font-bold uppercase text-[11px] text-slate-700 font-mono">
                   Goods / Service Line Items
                 </div>
-                <table className="w-full swiss-table">
+                <div className="overflow-x-auto">
+                <table className="w-full swiss-table min-w-[640px]">
                   <thead>
                     <tr>
                       <th>Description</th>
@@ -606,6 +607,7 @@ export const SalesView: React.FC<SalesViewProps> = ({ navigate }) => {
                     ))}
                   </tbody>
                 </table>
+                </div>
 
                 <div className="p-2 bg-slate-50 border-t border-slate-200">
                   <button
@@ -716,7 +718,7 @@ export const SalesView: React.FC<SalesViewProps> = ({ navigate }) => {
             className="absolute inset-0 bg-slate-950/40 backdrop-blur-2xs"
             onClick={() => setSelectedInvoice(null)}
           />
-          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 xs:pl-6 sm:pl-10">
             <div className="w-screen max-w-2xl bg-white shadow-2xl border-l border-slate-200 flex flex-col">
               {/* Header */}
               <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">

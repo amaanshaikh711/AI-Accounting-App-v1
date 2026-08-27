@@ -32,7 +32,7 @@ export const ForgotPasswordPage: React.FC<ForgotPasswordPageProps> = ({ navigate
             AI
           </div>
           <span className="text-sm font-bold tracking-widest text-slate-900 uppercase">
-            AI ACCOUNTING
+            AICOUNTS
           </span>
         </button>
       </div>

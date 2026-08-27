@@ -32,12 +32,14 @@ const AppContent: React.FC = () => {
 
   const [currentRoute, setCurrentRoute] = useState<string>('/dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
 
   // Navigation Handler
   const navigate = (route: string) => {
     setCurrentRoute(route);
+    setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -102,19 +104,21 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50 text-neutral-900 flex font-sans antialiased">
-      {/* App Sidebar */}
+    <div className="min-h-screen bg-neutral-50 text-neutral-900 flex font-sans antialiased overflow-x-hidden">
+      {/* App Sidebar (Desktop + Mobile Drawer) */}
       <Sidebar
         currentRoute={currentRoute}
         navigate={navigate}
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
       />
 
       {/* Main Workspace Layout */}
       <div
-        className={`flex-1 flex flex-col min-w-0 transition-all duration-200 ${
-          sidebarCollapsed ? 'pl-16' : 'pl-60'
+        className={`flex-1 flex flex-col min-w-0 transition-[padding] duration-300 ease-in-out motion-reduce:transition-none pl-0 ${
+          sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'
         }`}
       >
         {/* Top Header Navigation */}
@@ -123,10 +127,11 @@ const AppContent: React.FC = () => {
           navigate={navigate}
           openSearch={() => setIsSearchOpen(true)}
           openNotifications={() => setIsNotificationsOpen(true)}
+          openMobileMenu={() => setMobileMenuOpen(true)}
         />
 
         {/* Dynamic Page Content */}
-        <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-3.5 sm:p-5 md:p-6 lg:p-8 max-w-7xl w-full mx-auto min-w-0">
           {renderCurrentView()}
         </main>
       </div>
