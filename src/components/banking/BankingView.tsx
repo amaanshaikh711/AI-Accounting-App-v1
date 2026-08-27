@@ -83,7 +83,7 @@ export const BankingView: React.FC<BankingViewProps> = ({ navigate }) => {
               <div>
                 <div className="text-xs font-bold text-slate-900">{account.bankName}</div>
                 <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                  {account.accountType} •••• {account.accountNumber.slice(-4)}
+                  {account.accountType} •••• {(account.accountNumber || '').slice(-4)}
                 </div>
               </div>
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>

@@ -201,12 +201,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ navigate }) => {
         {/* Quick Voucher Action Buttons */}
         <div className="flex flex-wrap items-center gap-3">
           <button
-            onClick={() => navigate('/sales')}
-            id="quick-new-invoice-btn"
-            className="px-4 py-2 border border-neutral-900 bg-neutral-900 text-white text-xs font-bold uppercase tracking-widest transition-colors hover:bg-neutral-800 flex items-center gap-1.5 rounded-xs"
+            onClick={() => navigate('/sales/create-invoice')}
+            id="quick-generate-invoice-btn"
+            className="px-4 py-2 border border-neutral-900 bg-neutral-900 text-white text-xs font-bold uppercase tracking-widest transition-colors hover:bg-neutral-800 flex items-center gap-1.5 rounded-xs shadow-xs"
           >
             <Plus size={14} />
-            <span>New Invoice</span>
+            <span>Generate Invoice</span>
           </button>
           <button
             onClick={() => navigate('/expenses')}

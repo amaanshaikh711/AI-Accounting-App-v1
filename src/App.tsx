@@ -26,6 +26,7 @@ import { DocumentScannerView } from './components/ai/DocumentScannerView';
 import { ReviewQueueView } from './components/review/ReviewQueueView';
 import { SettingsView } from './components/settings/SettingsView';
 import { AuditLogView } from './components/audit/AuditLogView';
+import { InvoiceCreationFlow } from './components/invoices/InvoiceCreationFlow';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, currentUser, currentOrg } = useAccounting();
@@ -72,6 +73,15 @@ const AppContent: React.FC = () => {
         return <TransactionsView navigate={navigate} />;
       case '/sales':
         return <SalesView navigate={navigate} />;
+      case '/sales/create-invoice':
+      case '/invoices/create':
+      case '/create-invoice':
+        return (
+          <InvoiceCreationFlow
+            onBackToSales={() => navigate('/sales')}
+            onInvoiceCreated={() => navigate('/sales')}
+          />
+        );
       case '/purchases':
         return <PurchasesView navigate={navigate} />;
       case '/expenses':

@@ -337,10 +337,10 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     await new Promise((res) => setTimeout(res, 200));
     const user: User = {
       id: `usr_${Date.now()}`,
-      name,
+      name: name || 'User',
       email,
       role: 'Owner',
-      avatar: name.slice(0, 2).toUpperCase(),
+      avatar: (name || 'US').slice(0, 2).toUpperCase(),
     };
     setCurrentUser(user);
     addAuditEntry('User Registered', 'Authentication', `New account created: ${email}`);
@@ -470,10 +470,10 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const inviteUser = (name: string, email: string, role: Role, orgId: string) => {
     const newUser: User = {
       id: `usr_${Date.now()}`,
-      name,
+      name: name || 'User',
       email,
       role,
-      avatar: name.slice(0, 2).toUpperCase(),
+      avatar: (name || 'US').slice(0, 2).toUpperCase(),
     };
     setUsers((prev) => [...prev, newUser]);
     addAuditEntry('Invited Team Member', 'Settings', `Invited ${name} (${email}) as ${role}`);

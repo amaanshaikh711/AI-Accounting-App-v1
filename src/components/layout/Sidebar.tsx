@@ -171,7 +171,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <ul className="space-y-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive = currentRoute === item.route;
+                  const isActive = currentRoute === item.route || (item.route !== '/dashboard' && currentRoute.startsWith(item.route));
                   return (
                     <li key={`m-${item.route}`}>
                       <button
@@ -327,7 +327,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <ul className="space-y-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive = currentRoute === item.route;
+                  const isActive = currentRoute === item.route || (item.route !== '/dashboard' && currentRoute.startsWith(item.route));
                   return (
                     <li key={item.route}>
                       <button

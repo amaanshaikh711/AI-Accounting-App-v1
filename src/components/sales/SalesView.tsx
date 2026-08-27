@@ -18,6 +18,9 @@ import {
 import { useAccounting } from '../../context/AccountingContext';
 import { formatINR, formatDate, numberToWordsIndian } from '../../utils/formatters';
 import { Invoice, InvoiceItem, InvoiceStatus } from '../../types';
+import { InvoiceRenderer } from '../invoices/templates/InvoiceRenderer';
+import { InvoiceTemplateId, InvoiceFormData } from '../invoices/types';
+import { INVOICE_TEMPLATES, recalculateInvoice } from '../invoices/mockInvoiceData';
 
 interface SalesViewProps {
   navigate: (route: string) => void;
@@ -29,6 +32,7 @@ export const SalesView: React.FC<SalesViewProps> = ({ navigate }) => {
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [drawerTemplateId, setDrawerTemplateId] = useState<InvoiceTemplateId>('classic');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSubmittingInvoice, setIsSubmittingInvoice] = useState(false);
 
@@ -196,9 +200,9 @@ export const SalesView: React.FC<SalesViewProps> = ({ navigate }) => {
         </div>
 
         <button
-          onClick={() => setIsCreateModalOpen(true)}
+          onClick={() => navigate('/sales/create-invoice')}
           id="create-invoice-btn"
-          className="bg-slate-950 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded-xs flex items-center gap-2 transition-colors"
+          className="bg-slate-950 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2 rounded-xs flex items-center gap-2 transition-colors shadow-xs"
         >
           <Plus size={14} />
           <span>Generate Tax Invoice</span>
@@ -712,184 +716,176 @@ export const SalesView: React.FC<SalesViewProps> = ({ navigate }) => {
       )}
 
       {/* PRINTABLE TAX INVOICE PREVIEW DRAWER */}
-      {selectedInvoice && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          <div
-            className="absolute inset-0 bg-slate-950/40 backdrop-blur-2xs"
-            onClick={() => setSelectedInvoice(null)}
-          />
-          <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 xs:pl-6 sm:pl-10">
-            <div className="w-screen max-w-2xl bg-white shadow-2xl border-l border-slate-200 flex flex-col">
-              {/* Header */}
-              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono font-bold uppercase bg-slate-900 text-white px-2 py-0.5 rounded-xs">
-                    TAX INVOICE
-                  </span>
-                  <span className="font-mono font-bold text-slate-900">{selectedInvoice.invoiceNumber}</span>
+      {selectedInvoice && (() => {
+        const cust = customers.find((c) => c.id === selectedInvoice.customerId);
+        const invoiceItems = selectedInvoice.items.map((item: any, idx) => {
+          const qty = Number(item.quantity) || 1;
+          const rate = Number(item.unitPrice || item.rate) || 0;
+          const taxable = Number(item.taxableAmount || item.amount) || qty * rate;
+          const gstRate = Number(item.taxRate || item.gstRate) || 18;
+          const taxAmt = Number(item.taxAmount) || (taxable * gstRate) / 100;
+          return {
+            id: item.id || `item_${idx}`,
+            description: item.description || 'Line Item',
+            hsn: item.hsnSac || item.hsn || '9987',
+            quantity: qty,
+            unit: item.unit || 'NOS',
+            rate: rate,
+            discountPct: Number(item.discountPct) || 0,
+            gstRate: gstRate,
+            amount: taxable,
+            cgst: selectedInvoice.isInterState ? 0 : taxAmt / 2,
+            sgst: selectedInvoice.isInterState ? 0 : taxAmt / 2,
+            igst: selectedInvoice.isInterState ? taxAmt : 0,
+            total: taxable + taxAmt,
+          };
+        });
+
+        const drawerFormData: InvoiceFormData = {
+          templateId: drawerTemplateId,
+          business: {
+            name: currentOrg?.name || 'ACME INDUSTRIES PVT LTD',
+            tradeName: currentOrg?.tradeName || '',
+            gstin: currentOrg?.gstin || '27AABCA1234F1Z5',
+            pan: currentOrg?.pan || 'AABCA1234F',
+            address: currentOrg?.address || 'Plot 42, MIDC Industrial Area',
+            city: currentOrg?.city || 'Mumbai',
+            state: currentOrg?.state || 'Maharashtra (27)',
+            pincode: currentOrg?.pincode || '400093',
+            email: currentOrg?.email || 'billing@acmeindustries.in',
+            phone: currentOrg?.phone || '+91 22 4589 0000',
+            bankName: currentOrg?.bankName || 'HDFC Bank Ltd',
+            accountNumber: currentOrg?.accountNumber || '50200012345678',
+            ifscCode: currentOrg?.ifscCode || 'HDFC0000060',
+            branch: currentOrg?.branch || 'MIDC Andheri East',
+            upiId: currentOrg?.upiId || 'acme@hdfcbank',
+          },
+          customer: {
+            id: selectedInvoice.customerId,
+            name: selectedInvoice.customerName,
+            tradeName: cust?.tradeName || '',
+            gstin: selectedInvoice.customerGstin || cust?.gstin || 'UNREGISTERED',
+            pan: cust?.pan || '',
+            billingAddress: cust?.address || 'Corporate Park, Industrial Estate',
+            shippingAddress: cust?.address || 'Corporate Park, Industrial Estate',
+            city: cust?.city || 'Mumbai',
+            state: cust?.state || selectedInvoice.placeOfSupply || 'Maharashtra (27)',
+            pincode: '',
+            email: cust?.email || '',
+            phone: cust?.phone || '',
+            placeOfSupply: selectedInvoice.placeOfSupply || cust?.state || 'Maharashtra (27)',
+          },
+          metadata: {
+            invoiceNumber: selectedInvoice.invoiceNumber,
+            invoiceDate: selectedInvoice.date,
+            dueDate: selectedInvoice.dueDate,
+            poNumber: 'PO-' + (selectedInvoice.invoiceNumber.replace(/\D/g, '') || '901'),
+            paymentTerms: selectedInvoice.paymentTerms || 'Net 30 Days',
+            reverseCharge: !!selectedInvoice.reverseCharge,
+            isInterstate: !!selectedInvoice.isInterState,
+          },
+          items: invoiceItems,
+          additionalDiscount: 0,
+          shippingCharges: 0,
+          notes: selectedInvoice.notes || 'Thank you for your business.',
+          termsAndConditions: selectedInvoice.termsAndConditions || '1. Payment within 30 days of invoice date.\n2. Interest @ 18% p.a. on overdue payments.\n3. Subject to Mumbai Jurisdiction.',
+          authorizedSignatory: 'Amaan Sharma',
+          signatoryTitle: 'Authorized Signatory / Finance Director',
+        };
+
+        const drawerCalculations = recalculateInvoice(drawerFormData);
+
+        return (
+          <div className="fixed inset-0 z-50 overflow-hidden">
+            <div
+              className="absolute inset-0 bg-neutral-950/40 backdrop-blur-2xs"
+              onClick={() => setSelectedInvoice(null)}
+            />
+            <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 xs:pl-6 sm:pl-10">
+              <div className="w-screen max-w-4xl bg-neutral-100 shadow-2xl border-l border-neutral-200 flex flex-col">
+                {/* Drawer Header */}
+                <div className="px-5 py-3 border-b border-neutral-200 flex items-center justify-between bg-white">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold uppercase bg-neutral-900 text-white px-2 py-0.5 rounded-xs">
+                      TAX INVOICE
+                    </span>
+                    <span className="font-mono font-bold text-neutral-900">{selectedInvoice.invoiceNumber}</span>
+                  </div>
+
+                  {/* Template Switcher Pills */}
+                  <div className="flex items-center gap-1 overflow-x-auto">
+                    {INVOICE_TEMPLATES.map((tpl) => (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        onClick={() => setDrawerTemplateId(tpl.id)}
+                        className={`px-2 py-0.5 text-[10px] font-mono rounded-xs transition-colors ${
+                          drawerTemplateId === tpl.id
+                            ? 'bg-neutral-900 text-white font-bold'
+                            : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                        }`}
+                      >
+                        {tpl.name.split(' ')[0]}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => window.print()}
+                      className="p-1.5 text-neutral-700 hover:text-neutral-900 border border-neutral-300 hover:bg-neutral-50 rounded-xs flex items-center gap-1 text-xs font-mono"
+                    >
+                      <Printer size={13} />
+                      <span>Print</span>
+                    </button>
+                    <button
+                      onClick={() => setSelectedInvoice(null)}
+                      className="p-1.5 rounded-xs text-neutral-400 hover:text-neutral-700"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => window.print()}
-                    className="p-1.5 text-slate-600 hover:text-slate-900 border border-slate-300 hover:bg-white rounded-xs flex items-center gap-1 text-xs"
-                  >
-                    <Printer size={13} />
-                    <span>Print</span>
-                  </button>
+
+                {/* Printable Invoice Body using InvoiceRenderer */}
+                <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
+                  <InvoiceRenderer data={drawerFormData} calculations={drawerCalculations} />
+                </div>
+
+                {/* Drawer Footer Actions */}
+                <div className="p-4 border-t border-neutral-200 bg-white flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        updateInvoiceStatus(selectedInvoice.id, 'Paid');
+                        setSelectedInvoice({ ...selectedInvoice, status: 'Paid' });
+                      }}
+                      className="px-3 py-1.5 bg-emerald-700 text-white hover:bg-emerald-800 text-xs font-semibold rounded-xs font-mono"
+                    >
+                      Mark as Paid
+                    </button>
+                    <button
+                      onClick={() => {
+                        updateInvoiceStatus(selectedInvoice.id, 'Sent');
+                        setSelectedInvoice({ ...selectedInvoice, status: 'Sent' });
+                      }}
+                      className="px-3 py-1.5 bg-white border border-neutral-300 text-neutral-800 hover:bg-neutral-100 text-xs font-medium rounded-xs font-mono"
+                    >
+                      Mark as Sent
+                    </button>
+                  </div>
                   <button
                     onClick={() => setSelectedInvoice(null)}
-                    className="p-1.5 rounded-xs text-slate-400 hover:text-slate-700"
+                    className="px-4 py-1.5 bg-neutral-900 text-white rounded-xs text-xs font-semibold font-mono"
                   >
-                    <X size={18} />
+                    Close
                   </button>
                 </div>
-              </div>
-
-              {/* Printable Invoice Body */}
-              <div className="p-8 flex-1 overflow-y-auto space-y-6 text-xs text-slate-800">
-                {/* Issuer & Bill To Box */}
-                <div className="border border-slate-300 p-4 rounded-xs grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-[10px] uppercase font-mono font-bold text-slate-400">
-                      Billed By (Supplier)
-                    </div>
-                    <div className="font-bold text-slate-950 text-sm mt-1">
-                      {currentOrg?.name}
-                    </div>
-                    <div className="text-slate-600 mt-1">
-                      {currentOrg?.address}, {currentOrg?.city}, {currentOrg?.state} - {currentOrg?.pincode}
-                    </div>
-                    <div className="font-mono mt-1 text-slate-900 font-semibold">
-                      GSTIN: {currentOrg?.gstin}
-                    </div>
-                    <div className="font-mono text-slate-600">
-                      PAN: {currentOrg?.pan}
-                    </div>
-                  </div>
-
-                  <div className="border-l border-slate-200 pl-4">
-                    <div className="text-[10px] uppercase font-mono font-bold text-slate-400">
-                      Billed To (Customer)
-                    </div>
-                    <div className="font-bold text-slate-950 text-sm mt-1">
-                      {selectedInvoice.customerName}
-                    </div>
-                    <div className="font-mono mt-1 text-slate-900 font-semibold">
-                      GSTIN: {selectedInvoice.customerGstin}
-                    </div>
-                    <div className="text-slate-600 mt-1">
-                      Invoice Date: <span className="font-mono font-medium text-slate-900">{formatDate(selectedInvoice.date)}</span>
-                    </div>
-                    <div className="text-slate-600">
-                      Due Date: <span className="font-mono font-medium text-slate-900">{formatDate(selectedInvoice.dueDate)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Items Table */}
-                <table className="w-full swiss-table border border-slate-200">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Item Description</th>
-                      <th>HSN</th>
-                      <th className="text-center">Qty</th>
-                      <th className="text-right">Rate</th>
-                      <th className="text-right">Taxable</th>
-                      <th className="text-right">GST</th>
-                      <th className="text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedInvoice.items.map((item, idx) => (
-                      <tr key={item.id}>
-                        <td className="font-mono">{idx + 1}</td>
-                        <td className="font-medium text-slate-900">{item.description}</td>
-                        <td className="font-mono">{item.hsn}</td>
-                        <td className="font-mono text-center">{item.quantity} {item.unit}</td>
-                        <td className="font-mono text-right">{formatINR(item.rate)}</td>
-                        <td className="font-mono text-right">{formatINR(item.amount)}</td>
-                        <td className="font-mono text-right text-xs">
-                          {item.gstRate}%
-                        </td>
-                        <td className="font-mono text-right font-semibold">
-                          {formatINR(item.amount + item.cgst + item.sgst + item.igst)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {/* Totals */}
-                <div className="flex justify-end">
-                  <div className="w-64 bg-slate-50 border border-slate-200 p-3 rounded-xs space-y-1.5 font-mono text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 font-sans">Taxable Subtotal:</span>
-                      <span>{formatINR(selectedInvoice.taxableAmount)}</span>
-                    </div>
-                    {selectedInvoice.cgst > 0 && (
-                      <div className="flex justify-between text-slate-600">
-                        <span className="font-sans">CGST:</span>
-                        <span>{formatINR(selectedInvoice.cgst)}</span>
-                      </div>
-                    )}
-                    {selectedInvoice.sgst > 0 && (
-                      <div className="flex justify-between text-slate-600">
-                        <span className="font-sans">SGST:</span>
-                        <span>{formatINR(selectedInvoice.sgst)}</span>
-                      </div>
-                    )}
-                    {selectedInvoice.igst > 0 && (
-                      <div className="flex justify-between text-slate-600">
-                        <span className="font-sans">IGST:</span>
-                        <span>{formatINR(selectedInvoice.igst)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between border-t border-slate-900 pt-1.5 font-bold text-slate-950 text-sm">
-                      <span className="font-sans">Total (INR):</span>
-                      <span>{formatINR(selectedInvoice.totalAmount)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xs text-[11px] font-mono text-slate-600">
-                  Total in words: <span className="font-bold text-slate-900">{numberToWordsIndian(selectedInvoice.totalAmount)}</span>
-                </div>
-
-                {selectedInvoice.notes && (
-                  <div className="text-xs text-slate-500">
-                    <span className="font-semibold text-slate-700">Remarks: </span>
-                    {selectedInvoice.notes}
-                  </div>
-                )}
-              </div>
-
-              <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Paid')}
-                    className="px-3 py-1.5 bg-emerald-700 text-white hover:bg-emerald-800 text-xs font-semibold rounded-xs"
-                  >
-                    Mark as Paid
-                  </button>
-                  <button
-                    onClick={() => updateInvoiceStatus(selectedInvoice.id, 'Sent')}
-                    className="px-3 py-1.5 bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 text-xs font-medium rounded-xs"
-                  >
-                    Mark as Sent
-                  </button>
-                </div>
-                <button
-                  onClick={() => setSelectedInvoice(null)}
-                  className="px-4 py-1.5 bg-slate-900 text-white rounded-xs text-xs font-semibold"
-                >
-                  Close
-                </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

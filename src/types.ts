@@ -34,6 +34,11 @@ export interface Organization {
   pincode: string;
   email: string;
   phone: string;
+  bankName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  branch?: string;
+  upiId?: string;
   createdAt: string;
   userRole: Role;
 }
@@ -75,6 +80,12 @@ export interface Invoice {
   amountPaid: number;
   status: InvoiceStatus;
   notes?: string;
+  termsAndConditions?: string;
+  placeOfSupply?: string;
+  isInterState?: boolean;
+  reverseCharge?: boolean;
+  paymentTerms?: string;
+  templateId?: string;
 }
 
 export type PurchaseBillStatus = 'Received' | 'Paid' | 'Partially Paid' | 'Pending Review' | 'Draft' | 'Overdue';

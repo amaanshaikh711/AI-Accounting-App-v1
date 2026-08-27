@@ -429,7 +429,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ navigate }) => {
                     ))}
                     {expenses.map((exp) => (
                       <tr key={exp.id}>
-                        <td>EXP-{exp.id.slice(-4)}</td>
+                        <td>EXP-{(exp.id || '').slice(-4)}</td>
                         <td className="font-medium text-slate-900">{exp.category}</td>
                         <td>Expense Voucher</td>
                         <td className="text-right font-bold">{formatINR(exp.amount)}</td>
